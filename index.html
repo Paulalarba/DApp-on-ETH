@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>First DApp</title>
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <div>
+            <h1> This is my First DApp</h1>
+            <p>here we can set or get the mood:</p>
+            <label for="mood">Mood:</label><br />
+            <input type="text" id="mood" name="mood" /><br >
+
+            <button onclick="getMood()">Get Mood</button>
+            <button onclick="setMood()">Set Mood</button>
+
+            <p id="showmode"></p>
+        </div>
+        <script>
+            var getMood
+            var setMood
+        </script>
+
+        <script type="module">
+            import {
+                createWalletClient,
+                custom,
+                getContract,
+            } from "https://esm.sh/viem@1.0.2";
+
+            //create a client that connects the user's account to ethereum sepolia testnet
+            const walletClient = createWalletClient({
+                chain: sopilia,
+                transport: custom(window.ethereum),
+            });
+
+            //this will make your wallet extension pop up and ask the user to connect their account
+            //acount will be an array of addresses, we will use the first one
+            const accounts = await walletClient.requestAddresses();
+
+            // get the first account from the array
+            const [adress] = accounts;
+
+            const constractAddress = "0xc0cBAa2B1688C2eceCD6226Ba2F9F5Db34E1A096";
+            const modcontractAbi = [
+                {
+                    "inputs": [],
+                    "name": "getMode",
+                    "outputs": [
+                        {
+                            "internalType": "string",
+                            "name": "",
+                            "type": "string"
+                        }
+                    ],
+                    "stateMutability": "view",
+                    "type": "function"
+                },
+                {
+                    "inputs": [
+                        {
+                            "internalType": "string",
+                            "name": "_mood",
+                            "type": "string"
+                        }
+                    ],
+                    "name": "setMode",
+                    "outputs": [],
+                    "stateMutability": "nonpayable",
+                    "type": "function"
+                }
+            ];
+            const moodcontractInstance = getContract({
+                address: moodcontractInstance,
+                abi: modcontractAbi,
+                client: walletClient,
+            });
+
+            getMood = async function() {
+                const mood = await moodcontractInstance.read.getMood();
+                document.getElementById("showmode").innerText = 'your mode: ${mood}';
+            }
+            setMood = async function() {
+                const mood = document.getElementById("moode").value;
+                await moodcontractInstance.write.setMood([mood],{
+                    account: adress,
+                });
+            }
+        </script>
+    </body>
+        
+</html>
