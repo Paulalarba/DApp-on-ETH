@@ -1,94 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>First DApp</title>
-        <link rel="stylesheet" href="styles.css" />
-    </head>
-    <body>
-        <div>
-            <h1> This is my First DApp</h1>
-            <p>here we can set or get the mood:</p>
-            <label for="mood">Mood:</label><br />
-            <input type="text" id="mood" name="mood" /><br >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>First DApp</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div>
+    <h1> This is my First DApp</h1>
+    <p>here we can set or get the mood:</p>
+    <label for="mood">Mood:</label><br />
+    <input type="text" id="mood" name="mood" /><br />
 
-            <button onclick="getMood()">Get Mood</button>
-            <button onclick="setMood()">Set Mood</button>
+    <!-- buttons call global functions -->
+    <button onclick="getMode()">Get Mood</button>
+    <button onclick="setMode()">Set Mood</button>
 
-            <p id="showmode"></p>
-        </div>
-        <script>
-            var getMood
-            var setMood
-        </script>
+    <p id="showmode"></p>
+  </div>
 
-        <script type="module">
-            import {
-                createWalletClient,
-                custom,
-                getContract,
-            } from "https://esm.sh/viem@1.0.2";
+  <!-- declare globals (module will assign to these) -->
+  <script>
+    var getMode;
+    var setMode;
+  </script>
 
-            //create a client that connects the user's account to ethereum sepolia testnet
-            const walletClient = createWalletClient({
-                chain: sopilia,
-                transport: custom(window.ethereum),
-            });
+  <script type="module">
 
-            //this will make your wallet extension pop up and ask the user to connect their account
-            //acount will be an array of addresses, we will use the first one
-            const accounts = await walletClient.requestAddresses();
+    import { createWalletClient, custom, getContract } from "https://esm.sh/viem@1.0.2";
+    import { sepolia } from "https://esm.sh/viem/chains";
 
-            // get the first account from the array
-            const [adress] = accounts;
+    // Basic check for wallet
+    if (!window.ethereum) {
+      document.getElementById("showmode").innerText = "MetaMask (window.ethereum) not found. Please install and connect.";
+      // still continue — the following will fail if user clicks functions, but we provide a readable message
+    }
 
-            const constractAddress = "0xc0cBAa2B1688C2eceCD6226Ba2F9F5Db34E1A096";
-            const modcontractAbi = [
-                {
-                    "inputs": [],
-                    "name": "getMode",
-                    "outputs": [
-                        {
-                            "internalType": "string",
-                            "name": "",
-                            "type": "string"
-                        }
-                    ],
-                    "stateMutability": "view",
-                    "type": "function"
-                },
-                {
-                    "inputs": [
-                        {
-                            "internalType": "string",
-                            "name": "_mood",
-                            "type": "string"
-                        }
-                    ],
-                    "name": "setMode",
-                    "outputs": [],
-                    "stateMutability": "nonpayable",
-                    "type": "function"
-                }
-            ];
-            const moodcontractInstance = getContract({
-                address: moodcontractInstance,
-                abi: modcontractAbi,
-                client: walletClient,
-            });
+    // create wallet client
+    if (typeof window.ethereum === "undefined") {
+        alert("MetaMask not found. please install it: https://metamask.io/");
+    }else{
+    const walletClient = createWalletClient({
+      chain: sepolia,
+      transport: custom(window.ethereum),
+    });
+    }
 
-            getMood = async function() {
-                const mood = await moodcontractInstance.read.getMood();
-                document.getElementById("showmode").innerText = 'your mode: ${mood}';
-            }
-            setMood = async function() {
-                const mood = document.getElementById("moode").value;
-                await moodcontractInstance.write.setMood([mood],{
-                    account: adress,
-                });
-            }
-        </script>
-    </body>
-        
+    // request addresses (top-level await is allowed in modules)
+    const accounts = await walletClient.requestAddresses();
+    const [address] = accounts;
+
+    const contractAddress = "0xc0cBAa2B1688C2eceCD6226Ba2F9F5Db34E1A096";
+    const modeContractAbi = [
+      {
+        "inputs": [],
+        "name": "getMode",
+        "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [{ "internalType": "string", "name": "_mood", "type": "string" }],
+        "name": "setMode",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    ];
+
+    const modeContract = getContract({
+      address: contractAddress,
+      abi: modeContractAbi,
+      client: walletClient,
+    });
+
+    // ---- Assign global functions (these were declared earlier in non-module scope) ----
+    getMode = async function () {
+      try {
+        const mood = await modeContract.read.getMode();
+        document.getElementById("showmode").innerText = `your mood: ${mood || "(empty)"}`;
+      } catch (err) {
+        console.error("getMode error:", err);
+        document.getElementById("showmode").innerText = "Error reading mood: " + (err?.message || err);
+      }
+    }
+
+    setMode = async function () {
+      try {
+        const modeValue = document.getElementById("mood").value; // <-- use the 'mood' id from HTML
+        if (!modeValue) {
+          document.getElementById("showmode").innerText = "Type a mood before setting.";
+          return;
+        }
+        // write call: pass array of args and options; you used { account: address } which is fine
+        const tx = await modeContract.write.setMode([modeValue], { account: address });
+        document.getElementById("showmode").innerText = "Transaction sent. Waiting for confirmation...";
+        await tx.wait?.();
+        document.getElementById("showmode").innerText = "Mood stored on-chain ✅";
+      } catch (err) {
+        console.error("setMode error:", err);
+        document.getElementById("showmode").innerText = "Error setting mood: " + (err?.message || err);
+      }
+    }
+    // ------------------------------------------------------------------------------------
+  </script>
+</body>
 </html>
